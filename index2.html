@@ -1,0 +1,121 @@
+<html>
+  <head>
+  <!--  <script src="http://webrtc.googlecode.com/svn/trunk/samples/js/base/adapter.js"></script> -->
+    <script src="adapter.js"></script>
+    <script src="http://code.jquery.com/jquery-2.0.3.js"></script>
+    <script src="application.js"></script>
+    <link rel="stylesheet" type="text/css" href="layout.css" />
+    <style>
+##    body { font: 14pt Arial, sans-serif; background: lightgrey; }
+##    select { font: 14pt Arial, sans-serif; }
+##    body { text-align: center; margin-top: 20pt; position: relative;}
+##    canvas { display: inline-block; background: #202020; box-shadow: 0px 0px 10px blue;}
+##    #record.recording { background: red;
+##    background: -webkit-radial-gradient(center, ellipse cover, #ff0000 0%,lightgrey 75%,lightgrey 100%,#7db9e8 100%); }
+    </style>
+
+    <script>
+      $(document).ready(function (){
+        console.log("Being initialization of WebRTC");
+        if (!webrtcDetectedBrowser) {
+          console.log("Does not support WebRTC.");
+          return;
+        }
+        if (webrtcDetectedBrowser == "chrome" && webrtcDetectedVersion < 30) {
+          console.log("Browser not supported. Please upgrade to latest Chrome.");
+          return;
+        }
+
+        // get a list of WebRTC inputs.
+        MediaStreamTrack.getSources(function(sourceInfos) {
+          var microphoneSelect = $("select#microphone");
+          var tanpuraSelect = $("select#tanpura");
+
+          // fill up combo-boxes with available input audio devices.
+          $.each(sourceInfos, function(index, sourceInfo) {
+            console.log(index + " -- " + sourceInfo + " " + sourceInfo.kind + " " + sourceInfo.label);
+            if (sourceInfo.kind === "audio") {
+              var text = sourceInfo.label || 'Audio Input ' + (microphoneSelect[0].length);
+              microphoneSelect.append($("<option/>", {
+                                          value: sourceInfo.id,
+                                          text: text
+                                        }));
+              tanpuraSelect.append($("<option/>", {
+                                          value: sourceInfo.id,
+                                          text: text
+                                        }));
+              }
+            });
+          });
+        console.log("All is well.");
+        });
+    </script>
+  </head>
+  <body>
+    <div id="container">
+      <div id="header">
+        <h1>Hindustani Classical Music Classroom</h1>
+        <p>Online Hindustani classical music classroom designed for private
+        lessons<p>
+      </div>
+      <div id="content">
+        <h1>My Configuration</h1>
+        <p>Select input and output devices to use for this session.</p>
+        <p>
+          <label>Select Microphone: </label>
+          <select id="microphone">
+            <option value="null">None</option>
+          </select>
+        </p>
+        <p>
+          <label>Select Tanpura input (if applicable):</label>
+          <select id="tanpura">
+            <option value="null">None</option>
+          </select>
+        </p>
+        <p><button id="start">Start</button></p>
+      </div>
+      <div id="footer">
+        <p><b>Developed by: </b>Utkarsh Ayachit released under BSD with
+        Attribution (Fedora License).
+      </div>
+    </div>
+    <audio autoplay ></audio>
+  </body>
+  <script>
+    var App = {};
+    $.extend(App, {context : new webkitAudioContext()});
+    // setup the WebAudio pipeline for processing local audio inputs.
+    
+
+    $("button#start").click(function(){
+      var self = $(this);
+      if (self.text() === "Start") {
+        console.log("Starting using user selections.");
+        var microphoneId = $("#microphone")[0].value;
+        var tanpuraId = $("#tanpura")[0].value;
+
+        var constraints = {
+          audio: {
+            optional: [ {sourceId: microphoneId} ]
+          }
+        };
+        getUserMedia(constraints, function(stream) {
+          var microphone = App.context.createMediaStreamSource(stream);
+          var filter = App.context.createBiquadFilter();
+          microphone.connect(filter);
+          filter.connect(context.destination);
+          //$("audio")[0].src = window.URL.createObjectURL(stream);
+          // $("audio")[0].play();
+          self.text("Stop");
+        }, function (error) {
+          console.log("Error " + error);
+        });
+      } else {
+       // $("audio")[0].pause();
+        $("audio")[0].src = null;
+        self.text("Start");
+      }
+    });
+  </script>
+</html>
