@@ -121,14 +121,26 @@
                             console.log(item);
 
                             var elem = $("<li class='list-group-item' />");
-                            elem.text(label);
+                            elem.append($("<span class='center-block'><strong>" + label + "</strong></span>"));
 
                             var closebutton = $('<button class="close">&times;</button>');
                             elem.append(closebutton);
-                            closebutton.on("click", function() {
-                                console.log("FIXME: remove " + sourceid);});
+
+                            var audioControls = $("<audio controls />");
+                            audioControls.attr("id", sourceid);
+                            elem.append(audioControls);
+                            audioControls.attr("src",
+                                window.URL.createObjectURL(item.webRTCStream));
+                            audioControls[0].play();
 
                             $("#selectedaudioinputs").append(elem);
+
+                            closebutton.on("click", function() {
+                                audioControls[0].pause();
+                                self.parent().removeClass("hidden");
+                                elem.remove();
+                                // FIXME: release the webrtc stream
+                                });
 
                             // hide the option since we can't add the same input twice.
                             self.parent().addClass("hidden");
