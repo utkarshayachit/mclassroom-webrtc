@@ -46,13 +46,13 @@ var Classroom = (function($, window) {
   // returns a map of audio sources key == source-id, value == label/name
   function _getAudioSources(callback) {
     MediaStreamTrack.getSources(function(sourceInfos) {
-      var counter = 1;
       var result = {}
       $.each(sourceInfos, function(index, sourceInfo) {
         if (sourceInfo.kind === "audio") {
-          var text = sourceInfo.label || 'Audio Input ' + counter++;
+          var text = sourceInfo.label || 'Audio Input ' + index;
           result[sourceInfo.id] = text;
         }
+        console.log("Source " + index + " " + JSON.stringify(sourceInfo, null, " "));
       });
       callback(result);
     });
@@ -65,18 +65,18 @@ var Classroom = (function($, window) {
       audio: { optional: [ {sourceId: sourceId} ] }
     };
     getUserMedia(constraints, function(stream) {
-      var inputStream = self.webAudio.context.createMediaStreamSource(stream);
-      var gainNode = self.webAudio.context.createGain();
-      gainNode.gain.value = 0.1;
+      //var inputStream = self.webAudio.context.createMediaStreamSource(stream);
+      //var gainNode = self.webAudio.context.createGain();
+      //gainNode.gain.value = 0.1;
 
-      inputStream.connect(gainNode);
-      gainNode.connect(self.webAudio.context.destination);
+      //inputStream.connect(gainNode);
+      //gainNode.connect(self.webAudio.context.destination);
 
       self.webAudio.inputs.push({
         sourceId : sourceId,
         webRTCStream : stream,
-        mediaStream : inputStream,
-        gainNode: gainNode
+        //mediaStream : inputStream,
+        //gainNode: gainNode
       });
       if (successcallback) {
         successcallback(self.webAudio.inputs[self.webAudio.inputs.length-1]);
