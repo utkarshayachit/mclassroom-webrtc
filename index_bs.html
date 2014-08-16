@@ -77,6 +77,10 @@
                 <ul class="dropdown-menu" id="inputs">
                 </ul>
             </div>
+            <p>
+            <ul id="selectedaudioinputs" class="list-group">
+            </ul>
+            </p>
         </div>
     </div> <!-- container -->
 
@@ -112,9 +116,23 @@
                         var self = $(this);
                         var sourceid = self.data("sourceid");
                         console.log("Add input " + sourceid);
-                        // hide the option since we can't add the same input
-                        // twice.
-                        self.parent().addClass("hidden");
+                        App.addAudioInput(sourceid, function(item) {
+                            // if adding of audio input was successful.
+                            console.log(item);
+
+                            var elem = $("<li class='list-group-item' />");
+                            elem.text(label);
+
+                            var closebutton = $('<button class="close">&times;</button>');
+                            elem.append(closebutton);
+                            closebutton.on("click", function() {
+                                console.log("FIXME: remove " + sourceid);});
+
+                            $("#selectedaudioinputs").append(elem);
+
+                            // hide the option since we can't add the same input twice.
+                            self.parent().addClass("hidden");
+                            });
                         });
                     });
                 });
