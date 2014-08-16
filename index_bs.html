@@ -87,6 +87,25 @@
         <div id="golive" class="madhushala-template">
             <h1>connect and go live!</h1>
             <p class="lead">Connect with your teacher or student.</p>
+            <p class="center">
+                <form class="form-horizontal" role="form">
+                    <div class="form-group">
+                        <label for="yourid" class="col-sm-6 control-label">Your ID</label>
+                        <div class="col-sm-6">
+                            <input type="text" class="form-control" id="yourid"
+                            value="(not available yet)" readonly> </input>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="peerid" class="col-sm-6 control-label">Peer ID</label>
+                        <div class="col-sm-6">
+                            <input type="text" class="form-control" id="peerid"
+                            placeholder="Peer ID"></input>
+                        </div>
+                    </div>
+                    <button id="golive" type="button" class="btn btn-warning disabled">Connection Not Available Yet</button>
+                </form>
+            </p>
         </div>
     </div> <!-- container -->
 
@@ -97,6 +116,7 @@
 
     <!-- my application specific things -->
     <script src="http://code.jquery.com/jquery-2.0.3.js"></script>
+    <script src="http://cdn.peerjs.com/0.3/peer.js"></script>
     <script src="adapter.js"></script>
     <script src="application.js"></script>
     <script>
@@ -145,14 +165,48 @@
                                 audioControls[0].pause();
                                 self.parent().removeClass("hidden");
                                 elem.remove();
-                                // FIXME: release the webrtc stream
+                                /* FIXME: release the webrtc stream*/
                                 });
 
-                            // hide the option since we can't add the same input twice.
+                            /* hide the option since we can't add the same input twice.*/
                             self.parent().addClass("hidden");
                             });
                         });
                     });
+                });
+
+            App.getPeerConnectionInfo(function(selfid) {
+                $("input#yourid").attr("value", selfid);
+                var button$ = $("button#golive");
+                button$.removeClass("btn-warning disabled");
+                button$.addClass("btn-success");
+                button$.text("Go Live!");
+                });
+
+            $("button#golive").on("click", function(){
+                var self = $(this);
+                self.removeClass("btn-success");
+                self.addClass("btn-warning disabled");
+
+                if (self.text() == "Disconnect") {
+                    /* disconnect */
+                } else {
+                    self.text("Connecting ...");
+                    App.connectToPeer($("input#peerid").attr("value"), function(status){
+                        if (status) {
+                            self.text("Disconnect");
+                            self.removeClass("btn-warning disabled");
+                            self.addClass("btn-success");
+                        } else {
+                            self.text("Failed! Try again");
+                            window.setTimeout(function(){
+                                self.addClass("btn-success")
+                                self.removeClass("btn-warning disabled")
+                                self.text("Go Live!");
+                                }, 3000);
+                        }
+                        });
+                }
                 });
         };
         _execute();

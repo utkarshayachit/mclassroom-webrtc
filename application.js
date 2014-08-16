@@ -88,12 +88,45 @@ var Classroom = (function($, window) {
   }
 
   //---------------------------------------------------------------------------
+  function initializePeerJS() {
+      self.Peer = new Peer({key: 'lwjd5qra8257b9'});
+      self.Peer.on('open', function(id) {
+          console.log("My peer ID is: " + id);
+          self.PeerID = id;
+          if (self._getPeerConnectionInfoCallback) {
+              _getPeerConnectionInfo(self._getPeerConnectionInfoCallback);
+              delete self._getPeerConnectionInfoCallback;
+          }
+      });
+      return true;
+  }
+
+  //---------------------------------------------------------------------------
+  function _getPeerConnectionInfo(callback) {
+      if (self.PeerID) {
+          if (callback) { callback(self.PeerID, self.Peer); }
+      } else {
+          if (self._getPeerConnectionInfoCallback) {
+              throw "not implemented";
+          }
+          self._getPeerConnectionInfoCallback = callback;
+      }
+  }
+
+  //---------------------------------------------------------------------------
+  function _connectToPeer(peerid, callback) {
+      callback(false);
+  }
+
+  //---------------------------------------------------------------------------
   function constructor() {
-    if (!initializeWebRTC() || !initializeWebAudio()) { return null; }
+    if (!initializeWebRTC() || !initializeWebAudio() || !initializePeerJS()) { return null; }
 
     return {
       getAudioSources : _getAudioSources,
-      addAudioInput : _addAudioInput
+      addAudioInput : _addAudioInput,
+      getPeerConnectionInfo :  _getPeerConnectionInfo,
+      connectToPeer : _connectToPeer
     };
   }
 
