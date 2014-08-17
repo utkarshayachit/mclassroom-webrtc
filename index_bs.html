@@ -93,7 +93,7 @@
                         <label for="yourid" class="col-sm-6 control-label">Your ID</label>
                         <div class="col-sm-6">
                             <input type="text" class="form-control" id="yourid"
-                            value="(not available yet)" readonly> </input>
+                            value="(not available yet)" > </input>
                         </div>
                     </div>
                     <div class="form-group">
@@ -105,6 +105,10 @@
                     </div>
                     <button id="golive" type="button" class="btn btn-warning disabled">Connection Not Available Yet</button>
                 </form>
+            </p>
+            <p>
+            <ul id="remoteaudioinputs" class="list-group">
+            </ul>
             </p>
         </div>
     </div> <!-- container -->
@@ -127,6 +131,23 @@
                 return;
             }
 
+            function createAudioElement(stream, label, onclose) {
+                var elem = $("<li class='list-group-item' />");
+                elem.append($("<span class='center-block'><strong>" + label + "</strong></span>"));
+
+                var audioControls = $("<audio controls />");
+                elem.append(audioControls);
+                audioControls.attr("src", window.URL.createObjectURL(stream));
+                audioControls[0].play();
+
+                if (onclose) {
+                    var closebutton = $('<button class="close">&times;</button>');
+                    elem.append(closebutton);
+                    closebutton.on("click", onclose);
+                }
+                return elem;
+            }
+
             // Fill up the available audio inputs.
             App.getAudioSources(function(map) {
                 var inputs = $("ul#inputs");
@@ -142,31 +163,18 @@
                         var self = $(this);
                         var sourceid = self.data("sourceid");
                         console.log("Add input " + sourceid);
-                        App.addAudioInput(sourceid, function(item) {
+                        App.addAudioInput(sourceid, function(stream) {
                             // if adding of audio input was successful.
-                            console.log(item);
+                            console.log("Add local stream " + stream);
 
-                            var elem = $("<li class='list-group-item' />");
-                            elem.append($("<span class='center-block'><strong>" + label + "</strong></span>"));
-
-                            var closebutton = $('<button class="close">&times;</button>');
-                            elem.append(closebutton);
-
-                            var audioControls = $("<audio controls />");
-                            audioControls.attr("id", sourceid);
-                            elem.append(audioControls);
-                            audioControls.attr("src",
-                                window.URL.createObjectURL(item.webRTCStream));
-                            audioControls[0].play();
-
-                            $("#selectedaudioinputs").append(elem);
-
-                            closebutton.on("click", function() {
-                                audioControls[0].pause();
+                            var elem = createAudioElement(stream, label, function() {
                                 self.parent().removeClass("hidden");
                                 elem.remove();
+                                App.removeAudioInput(stream);
                                 /* FIXME: release the webrtc stream*/
                                 });
+
+                            $("#selectedaudioinputs").append(elem);
 
                             /* hide the option since we can't add the same input twice.*/
                             self.parent().addClass("hidden");
@@ -177,36 +185,80 @@
 
             App.getPeerConnectionInfo(function(selfid) {
                 $("input#yourid").attr("value", selfid);
+                ready();
+                });
+
+            function _clearTimer() {
                 var button$ = $("button#golive");
-                button$.removeClass("btn-warning disabled");
+                var timerid = button$.data("timer");
+                if (timerid) {
+                    window.clearTimeout(timerid);
+                }
+                button$.removeData("timer");
+            }
+
+            function ready() {
+                var button$ = $("button#golive");
+                _clearTimer();
+                button$.removeData("timer");
+                button$.text("Go Live!");
+                button$.removeClass("btn-warning btn-danger disabled");
                 button$.addClass("btn-success");
                 button$.text("Go Live!");
-                });
+            }
+
+            function nonFatalError(msg) {
+                _clearTimer();
+                var button$ = $("button#golive");
+                button$.removeClass("btn-success btn-warning");
+                button$.addClass("btn-danger disabled");
+                button$.text(msg);
+                var timerid = window.setTimeout(ready, 3000);
+                button$.data("timer", timerid);
+            }
+
+            function busy(msg) {
+                _clearTimer();
+                var button$ = $("button#golive");
+                button$.removeClass("btn-success btn-danger");
+                button$.addClass("btn-warning disabled");
+                button$.text(msg);
+            }
+
+            function fatalError(msg) {
+                _clearTimer();
+                var button$ = $("button#golive");
+                button$.removeClass("btn-success btn-warning");
+                button$.addClass("btn-danger disabled");
+                button$.text(msg);
+            }
 
             $("button#golive").on("click", function(){
                 var self = $(this);
-                self.removeClass("btn-success");
-                self.addClass("btn-warning disabled");
-
                 if (self.text() == "Disconnect") {
                     /* disconnect */
                 } else {
-                    self.text("Connecting ...");
-                    App.connectToPeer($("input#peerid").attr("value"), function(status){
-                        if (status) {
-                            self.text("Disconnect");
-                            self.removeClass("btn-warning disabled");
-                            self.addClass("btn-success");
-                        } else {
-                            self.text("Failed! Try again");
-                            window.setTimeout(function(){
-                                self.addClass("btn-success")
-                                self.removeClass("btn-warning disabled")
-                                self.text("Go Live!");
-                                }, 3000);
-                        }
-                        });
+                    busy("Connecting ...");
+                    App.connectToPeer($("input#peerid").val());
                 }
+                });
+
+            App.on("error", function(event, errcode, data) {
+                if (errcode == App.error_codes.COMMUNICATION_INVALID_PEERID) {
+                    nonFatalError("Invalid Peer ID!");
+                } else if (errcode === App.error_codes.COMMUNICATION_NO_INPUT_AUDIO_STREAMS) {
+                    nonFatalError("Select audio inputs first!");
+                } else {
+                    fatalError("Unhandled Error (ERR" + errcode + ")!!!");
+                }
+                });
+
+            App.on("stream", function (event, stream) {
+                /* called when a remote stream is received */
+                console.log("Add remote stream " + stream);
+                var elem = createAudioElement(stream, "Peer Audio Input", function() {
+                    });
+                $("#remoteaudioinputs").append(elem);
                 });
         };
         _execute();

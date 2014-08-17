@@ -3,9 +3,21 @@ var Classroom = (function($, window) {
   // Instance stores the reference to the Singleton.
   var instance;
   var self = this;
+  var self$ = $(this);
 
   var AudioContext = window.AudioContext ||
                      window.webkitAudioContext;
+
+  //---------------------------------------------------------------------------
+  // Error codes
+  var ErrorCodes = {
+      /* Connection is being attempted without a valid peer id. */
+      COMMUNICATION_INVALID_PEERID : 10001,
+      /* No audio streams are available to start a call.*/
+      COMMUNICATION_NO_INPUT_AUDIO_STREAMS : 10002,
+      /* Error message from PeerJS */
+      PEERJS_ERROR : 10003
+  };
 
   //---------------------------------------------------------------------------
   // validate WebRTC support.
@@ -65,31 +77,39 @@ var Classroom = (function($, window) {
       audio: { optional: [ {sourceId: sourceId} ] }
     };
     getUserMedia(constraints, function(stream) {
-      //var inputStream = self.webAudio.context.createMediaStreamSource(stream);
-      //var gainNode = self.webAudio.context.createGain();
-      //gainNode.gain.value = 0.1;
-
-      //inputStream.connect(gainNode);
-      //gainNode.connect(self.webAudio.context.destination);
-
-      self.webAudio.inputs.push({
-        sourceId : sourceId,
-        webRTCStream : stream,
-        //mediaStream : inputStream,
-        //gainNode: gainNode
-      });
-      if (successcallback) {
-        successcallback(self.webAudio.inputs[self.webAudio.inputs.length-1]);
-      }
+        /* save sourceid as data on the stream */
+        if (successcallback) {
+            successcallback(stream);
+            self.ActiveAudioStreams.push(stream);
+        }
     }, function(error) {
-      if (errorcallback) { errorcallback(error); }
-      else { console.log("Classroom Error: " + error); }
+        if (errorcallback) { errorcallback(error); }
+        else { console.log("Classroom Error: " + error); }
     });
   }
 
   //---------------------------------------------------------------------------
+  function _removeAudioInput(stream) {
+    var index = self.ActiveAudioStreams.indexOf(stream);
+    if (index >= 0) {
+        stream.stop();
+        self.ActiveAudioStreams.splice(index);
+     } else {
+         throw "Unexpected argument" + stream;
+     }
+  }
+
+  //---------------------------------------------------------------------------
   function initializePeerJS() {
-      self.Peer = new Peer({key: 'lwjd5qra8257b9'});
+      self.Peer = new Peer({key: 'rg2evj4ryejw0zfr',
+          // Set highest debug level (log everything!).
+          debug : 3,
+          config : { 'iceServers': [
+                  /*{url : "107.23.150.92:3478" },*/
+                  {url : "stun:stun.l.google.com:19302"},
+                  {url : "stun:stun.stunprotocol.org:3478"}
+          ]}
+      });
       self.Peer.on('open', function(id) {
           console.log("My peer ID is: " + id);
           self.PeerID = id;
@@ -97,6 +117,16 @@ var Classroom = (function($, window) {
               _getPeerConnectionInfo(self._getPeerConnectionInfoCallback);
               delete self._getPeerConnectionInfoCallback;
           }
+      });
+      self.Peer.on('error', function(err) {
+          console.log("Peer Error " + err);
+      });
+      self.Peer.on("call", function(call) {
+          console.log("Received call from peer:" + call);
+          call.answer(); /* we don't reply with our stream since there's no 1-1 mapping */
+          call.on('stream', function (remotestream) {
+              self$.trigger("stream", remotestream);
+          });
       });
       return true;
   }
@@ -114,19 +144,48 @@ var Classroom = (function($, window) {
   }
 
   //---------------------------------------------------------------------------
-  function _connectToPeer(peerid, callback) {
-      callback(false);
+  function _connectToPeer(peerid) {
+      if (peerid === undefined || peerid === "") {
+          self$.trigger("error", ErrorCodes.COMMUNICATION_INVALID_PEERID);
+      } else if (self.ActiveAudioStreams.length == 0) {
+          self$.trigger("error", ErrorCodes.COMMUNICATION_NO_INPUT_AUDIO_STREAMS);
+      } else {
+          $.each(self.ActiveAudioStreams, function (idx, stream) {
+              var mediaConnection = self.Peer.call(peerid, stream);
+
+              /* handle remote adding a reply stream */
+              mediaConnection.on('stream', function (remotestream) {
+                  console.log("mediaConnection.on==>stream");
+              });
+              /* handle error */
+              mediaConnection.on('error', function(err) {
+                  console.log("MediaConnection Error: " + err);
+                  self$.trigger("error", [ErrorCodes.PEERJS_ERROR, err]);
+              });
+              /* handle close */
+              mediaConnection.on('close', function(){
+                  console.log("mediaConnection.on==>close");
+              });
+          });
+      }
   }
 
   //---------------------------------------------------------------------------
   function constructor() {
     if (!initializeWebRTC() || !initializeWebAudio() || !initializePeerJS()) { return null; }
 
+    self.ActiveAudioStreams = [];
+
     return {
       getAudioSources : _getAudioSources,
       addAudioInput : _addAudioInput,
+      removeAudioInput : _removeAudioInput,
       getPeerConnectionInfo :  _getPeerConnectionInfo,
-      connectToPeer : _connectToPeer
+      connectToPeer : _connectToPeer,
+      error_codes   : ErrorCodes,
+      on : function (events, selector, data, handler) {
+          self$.on(events, selector, data, handler);
+      }
     };
   }
 
