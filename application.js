@@ -8,6 +8,18 @@ var Classroom = (function($, window) {
   var AudioContext = window.AudioContext ||
                      window.webkitAudioContext;
 
+
+  function getUrlParameter(key) {
+    var sPageURL = window.location.search.substring(1);
+    var sURLVariables = sPageURL.split('&');
+    for (var i = 0; i < sURLVariables.length; i++) {
+      var sParameterName = sURLVariables[i].split('=');
+      if (sParameterName[0] == key) {
+        return sParameterName[1];
+      }
+    }
+  }
+
   //---------------------------------------------------------------------------
   // Error codes
   var ErrorCodes = {
@@ -74,7 +86,7 @@ var Classroom = (function($, window) {
   // add an input source.
   function _addAudioInput(sourceId, successcallback, errorcallback) {
     var constraints = {
-      audio: { optional: [ {sourceId: sourceId} ] }
+      audio: { mandatory: {sourceId: sourceId, echoCancellation: false} }
     };
     getUserMedia(constraints, function(stream) {
         /* save sourceid as data on the stream */
@@ -101,7 +113,9 @@ var Classroom = (function($, window) {
 
   //---------------------------------------------------------------------------
   function initializePeerJS() {
-      self.Peer = new Peer({key: 'rg2evj4ryejw0zfr',
+      var id = getUrlParameter("id");
+      console.log("Using ID" + id);
+      self.Peer = new Peer(id, {key: 'rg2evj4ryejw0zfr',
           // Set highest debug level (log everything!).
           debug : 3,
           config : { 'iceServers': [
