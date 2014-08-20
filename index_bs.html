@@ -83,16 +83,27 @@
             </p>
         </div>
 
-
         <div id="golive" class="madhushala-template">
             <h1>connect and go live!</h1>
             <p class="lead">Connect with your teacher or student.</p>
             <p class="center">
-                <form class="form-horizontal" role="form">
+                <form class="form-horizontal" role="form" id="page1">
+                    <div class="form-group">
+                        <label for="pseudonym" class="col-sm-6 control-label">Pseudonym</label>
+                        <div class="col-sm-6">
+                            <input type="text" class="form-control" id="pseudonym"
+                                   placeholder="Enter pseudonym to identify you" />
+                        </div>
+                    </div>
+                    <button id="connect" type="button" class="btn btn-success">Connect</button>
+                </form>
+            </p>
+            <p class="center">
+                <form class="hidden form-horizontal" role="form" id="page2">
                     <div class="form-group">
                         <label for="yourid" class="col-sm-6 control-label">Your ID</label>
                         <div class="col-sm-6">
-                            <input type="text" class="form-control" id="yourid"
+                            <input type="text" class="form-control" id="yourid" readonly
                             value="(not available yet)" > </input>
                         </div>
                     </div>
@@ -100,7 +111,7 @@
                         <label for="peerid" class="col-sm-6 control-label">Peer ID</label>
                         <div class="col-sm-6">
                             <input type="text" class="form-control" id="peerid"
-                            placeholder="Peer ID"></input>
+                            placeholder="Enter pseudonym for the other person"></input>
                         </div>
                     </div>
                     <button id="golive" type="button" class="btn btn-warning disabled">Connection Not Available Yet</button>
@@ -186,11 +197,6 @@
                     });
                 });
 
-            App.getPeerConnectionInfo(function(selfid) {
-                $("input#yourid").attr("value", selfid);
-                ready();
-                });
-
             function _clearTimer() {
                 var button$ = $("button#golive");
                 var timerid = button$.data("timer");
@@ -200,8 +206,8 @@
                 button$.removeData("timer");
             }
 
-            function ready() {
-                var button$ = $("button#golive");
+            function ready(btn) {
+                var button$ = btn || $("button#golive");
                 _clearTimer();
                 button$.removeData("timer");
                 button$.text("Go Live!");
@@ -220,9 +226,9 @@
                 button$.data("timer", timerid);
             }
 
-            function busy(msg) {
+            function busy(msg, btn) {
                 _clearTimer();
-                var button$ = $("button#golive");
+                var button$ = btn || $("button#golive");
                 button$.removeClass("btn-success btn-danger");
                 button$.addClass("btn-warning disabled");
                 button$.text(msg);
@@ -239,12 +245,25 @@
             $("button#golive").on("click", function(){
                 var self = $(this);
                 if (self.text() == "Disconnect") {
+                    busy("Reload the page to disconnect", self);
                     /* disconnect */
                 } else {
-                    busy("Connecting ...");
+                    self.text("Disconnect");
                     App.connectToPeer($("input#peerid").val());
                 }
                 });
+
+            $("button#connect").on("click", function(){
+              /* initialize server connection */
+                var self = $(this);
+                busy("Signing on ...", self);
+                App.connectToServer($("input#pseudonym").val(), function(myid) {
+                    $("input#yourid").val(myid);
+                    $("form#page1").addClass("hidden");
+                    $("form#page2").removeClass("hidden");
+                    ready($("button#golive"));
+                    });
+              });
 
             App.on("error", function(event, errcode, data) {
                 if (errcode == App.error_codes.COMMUNICATION_INVALID_PEERID) {

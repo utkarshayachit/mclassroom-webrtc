@@ -2,8 +2,8 @@ var Classroom = (function($, window) {
   if (!$) { throw "jQuery required."; }
   // Instance stores the reference to the Singleton.
   var instance;
-  var self = this;
-  var self$ = $(this);
+  var self = {};
+  var self$ = $(self);
 
   var AudioContext = window.AudioContext ||
                      window.webkitAudioContext;
@@ -112,10 +112,12 @@ var Classroom = (function($, window) {
   }
 
   //---------------------------------------------------------------------------
-  function initializePeerJS() {
-      var id = getUrlParameter("id");
-      console.log("Using ID" + id);
-      self.Peer = new Peer(id, {key: 'rg2evj4ryejw0zfr',
+  function _connectToServer(pseudonym, successcallback) {
+      if (self.Peer) {
+        throw "Already connected to Server. Cannot connect again!";
+      }
+      console.log("Connect to PeerJS server");
+      self.Peer = new Peer(pseudonym, {key: 'rg2evj4ryejw0zfr',
           // Set highest debug level (log everything!).
           debug : 3,
           config : { 'iceServers': [
@@ -127,10 +129,7 @@ var Classroom = (function($, window) {
       self.Peer.on('open', function(id) {
           console.log("My peer ID is: " + id);
           self.PeerID = id;
-          if (self._getPeerConnectionInfoCallback) {
-              _getPeerConnectionInfo(self._getPeerConnectionInfoCallback);
-              delete self._getPeerConnectionInfoCallback;
-          }
+          if (successcallback) { successcallback(id); }
       });
       self.Peer.on('error', function(err) {
           console.log("Peer Error " + err);
@@ -143,18 +142,6 @@ var Classroom = (function($, window) {
           });
       });
       return true;
-  }
-
-  //---------------------------------------------------------------------------
-  function _getPeerConnectionInfo(callback) {
-      if (self.PeerID) {
-          if (callback) { callback(self.PeerID, self.Peer); }
-      } else {
-          if (self._getPeerConnectionInfoCallback) {
-              throw "not implemented";
-          }
-          self._getPeerConnectionInfoCallback = callback;
-      }
   }
 
   //---------------------------------------------------------------------------
@@ -186,7 +173,7 @@ var Classroom = (function($, window) {
 
   //---------------------------------------------------------------------------
   function constructor() {
-    if (!initializeWebRTC() || !initializeWebAudio() || !initializePeerJS()) { return null; }
+    if (!initializeWebRTC()) { return null; }
 
     self.ActiveAudioStreams = [];
 
@@ -194,7 +181,7 @@ var Classroom = (function($, window) {
       getAudioSources : _getAudioSources,
       addAudioInput : _addAudioInput,
       removeAudioInput : _removeAudioInput,
-      getPeerConnectionInfo :  _getPeerConnectionInfo,
+      connectToServer : _connectToServer,
       connectToPeer : _connectToPeer,
       error_codes   : ErrorCodes,
       on : function (events, selector, data, handler) {
@@ -209,7 +196,7 @@ var Classroom = (function($, window) {
     getInstance: function() {
       if (!instance) {
         instance = constructor();
-        setupWebAudio();
+        // setupWebAudio();
       }
       return instance;
     }
