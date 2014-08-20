@@ -120,6 +120,14 @@
             <ul id="remoteaudioinputs" class="list-group">
             </ul>
             </p>
+            <div class="hidden alert alert-warning" role="alert" id="golivewarn">
+                <button type="button" class="close"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                <strong>Warning!</strong>
+            </div>
+            <div class="hidden alert alert-danger" role="alert" id="goliveabort">
+                <strong>Error!!</strong>
+            </div>
+
         </div>
     </div> <!-- container -->
 
@@ -136,6 +144,7 @@
     -->
     <script src="adapter.js"></script>
     <script src="application.js"></script>
+    <script src="alert.js"></script>
     <script>
         var _execute = function () {
             var App = Classroom.getInstance();
@@ -196,18 +205,8 @@
                     });
                 });
 
-            function _clearTimer() {
-                var button$ = $("button#golive");
-                var timerid = button$.data("timer");
-                if (timerid) {
-                    window.clearTimeout(timerid);
-                }
-                button$.removeData("timer");
-            }
-
             function ready(btn) {
                 var button$ = btn || $("button#golive");
-                _clearTimer();
                 button$.removeData("timer");
                 button$.text("Go Live!");
                 button$.removeClass("btn-warning btn-danger disabled");
@@ -215,31 +214,16 @@
                 button$.text("Go Live!");
             }
 
-            function nonFatalError(msg) {
-                _clearTimer();
-                var button$ = $("button#golive");
-                button$.removeClass("btn-success btn-warning");
-                button$.addClass("btn-danger disabled");
-                button$.text(msg);
-                var timerid = window.setTimeout(ready, 3000);
-                button$.data("timer", timerid);
-            }
-
             function busy(msg, btn) {
-                _clearTimer();
                 var button$ = btn || $("button#golive");
                 button$.removeClass("btn-success btn-danger");
                 button$.addClass("btn-warning disabled");
                 button$.text(msg);
             }
 
-            function fatalError(msg) {
-                _clearTimer();
-                var button$ = $("button#golive");
-                button$.removeClass("btn-success btn-warning");
-                button$.addClass("btn-danger disabled");
-                button$.text(msg);
-            }
+            var golivewarn$ = $("div#golivewarn");
+            var goliveabort$ = $("div#goliveabort");
+            Alert.initialize(golivewarn$, goliveabort$);
 
             $("button#golive").on("click", function(){
                 var self = $(this);
@@ -267,11 +251,13 @@
 
             App.on("error", function(event, errcode, data) {
                 if (errcode == App.error_codes.COMMUNICATION_INVALID_PEERID) {
-                    nonFatalError("Invalid Peer ID!");
+                    Alert.warn("Invalid 'Peer ID'. Please enter a valid ID!");
+                    ready();
                 } else if (errcode === App.error_codes.COMMUNICATION_NO_INPUT_AUDIO_STREAMS) {
-                    nonFatalError("Select audio inputs first!");
+                    Alert.warn("Select audio inputs to send!");
+                    ready();
                 } else {
-                    fatalError("Unhandled Error (ERR" + errcode + ")!!!");
+                    Alert.error("Unhandled Error (ERR" + errcode + ")!!!");
                 }
                 });
 
