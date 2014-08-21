@@ -16,5 +16,5 @@ http.createServer(function (request, response) {
 
 
 /* setup PeerJS server */
-var PeerServer = require('peer').PeerServer;
-var server = new PeerServer({port:9000, path: '/mclassroom'});
+//var PeerServer = require('peer').PeerServer;
+//var server = new PeerServer({port:9000, path: '/mclassroom'});
