@@ -1,0 +1,8 @@
+{
+  "name": "classroom",
+  "version": "0.0.1",
+  "description": "The Lesson",
+  "dependencies" : {
+    "peer": "~0.2.6"
+  }
+}
