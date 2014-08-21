@@ -1,2 +1,9 @@
 var static = require('node-static');
-new static.Server();
+var fileServer = new static.Server();
+var port = process.env.OPENSHIFT_NODEJS_PORT;
+
+require('http').createServer(function (request, response) {
+  request.addListener('end', function () {
+    fileServer.serve(request, response);
+  }).resume();
+}).listen(8080);
